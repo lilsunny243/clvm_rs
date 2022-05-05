@@ -258,7 +258,10 @@ pub fn op_unknown(
     assert!(cost > 0);
 
     check_cost(allocator, cost, max_cost)?;
-    cost *= cost_multiplier + 1;
+    match cost.checked_mul(cost_multiplier + 1) {
+        Some(c) => cost = c,
+        _ => return err(o, "cost multiplier overflow"),
+    }
     if cost > u32::MAX as u64 {
         err(o, "invalid operator")
     } else {
