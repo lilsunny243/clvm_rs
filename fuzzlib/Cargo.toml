@@ -1,0 +1,12 @@
+[package]
+name = "fuzzlib"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "fuzzlib"
+path = "src/lib.rs" 
+crate-type = ["dylib"]
+
+[dependencies]
+clvmr = { path = "..", features = [] }
