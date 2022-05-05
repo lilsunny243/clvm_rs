@@ -20,7 +20,8 @@ pub struct Ret {
 
 #[no_mangle]
 pub extern "C" fn eval_op(
-    op_code: u8,
+    op_code_buf: *mut u8,
+    op_code_len: usize,
     args_buf: *mut u8,
     args_len: usize,
     block_height: u32,
@@ -32,8 +33,9 @@ pub extern "C" fn eval_op(
     }
 
     let args = unsafe { slice::from_raw_parts_mut(args_buf, args_len) };
+    let op_code = unsafe { slice::from_raw_parts_mut(op_code_buf, op_code_len) };
 
-    let op_node = a.new_atom(&[op_code]).unwrap();
+    let op_node = a.new_atom(op_code).unwrap();
     let args_node = node_from_bytes(&mut a, args).unwrap();
 
     let d = ChiaDialect::new(flags);
