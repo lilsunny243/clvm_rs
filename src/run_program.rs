@@ -37,6 +37,13 @@ enum Operation {
 // `run_program` has two stacks: the operand stack (of `Node` objects) and the
 // operator stack (of Operation)
 
+pub struct TestSample {
+    pub op_code: NodePtr,
+    pub args: NodePtr,
+    pub cost: u64,
+    pub ret: NodePtr,
+}
+
 struct RunProgramContext<'a, D> {
     allocator: &'a mut Allocator,
     dialect: &'a D,
@@ -44,6 +51,9 @@ struct RunProgramContext<'a, D> {
     posteval_stack: Vec<Box<PostEval>>,
     val_stack: Vec<NodePtr>,
     op_stack: Vec<Operation>,
+
+    collect_test_samples: bool,
+    test_samples: Vec<TestSample>,
 }
 
 impl<'a, 'h, D: Dialect> RunProgramContext<'a, D> {
@@ -136,7 +146,12 @@ fn augment_cost_errors(r: Result<Cost, EvalErr>, max_cost: NodePtr) -> Result<Co
 }
 
 impl<'a, D: Dialect> RunProgramContext<'a, D> {
-    fn new(allocator: &'a mut Allocator, dialect: &'a D, pre_eval: Option<PreEval>) -> Self {
+    fn new(
+        allocator: &'a mut Allocator,
+        dialect: &'a D,
+        pre_eval: Option<PreEval>,
+        collect_test_samples: bool,
+    ) -> Self {
         RunProgramContext {
             allocator,
             dialect,
@@ -144,6 +159,8 @@ impl<'a, D: Dialect> RunProgramContext<'a, D> {
             posteval_stack: Vec::new(),
             val_stack: Vec::new(),
             op_stack: Vec::new(),
+            collect_test_samples: collect_test_samples,
+            test_samples: Vec::new(),
         }
     }
 
@@ -284,6 +301,14 @@ impl<'a, D: Dialect> RunProgramContext<'a, D> {
             let r = self
                 .dialect
                 .op(self.allocator, operator, operand_list, max_cost)?;
+            if self.collect_test_samples {
+                self.test_samples.push(TestSample {
+                    op_code: operator,
+                    args: operand_list,
+                    cost: r.0,
+                    ret: r.1,
+                })
+            }
             self.push(r.1);
             Ok(r.0)
         }
@@ -330,6 +355,20 @@ impl<'a, D: Dialect> RunProgramContext<'a, D> {
     }
 }
 
+pub fn run_program_with_test_samples_option<'a, D: Dialect>(
+    allocator: &'a mut Allocator,
+    dialect: &'a D,
+    program: NodePtr,
+    args: NodePtr,
+    max_cost: Cost,
+    pre_eval: Option<PreEval>,
+    collect_test_samples: bool,
+) -> (Response, Vec<TestSample>) {
+    let mut rpc = RunProgramContext::new(allocator, dialect, pre_eval, collect_test_samples);
+    let resp = rpc.run_program(program, args, max_cost);
+    return (resp, rpc.test_samples);
+}
+
 pub fn run_program<'a, D: Dialect>(
     allocator: &'a mut Allocator,
     dialect: &'a D,
@@ -338,8 +377,10 @@ pub fn run_program<'a, D: Dialect>(
     max_cost: Cost,
     pre_eval: Option<PreEval>,
 ) -> Response {
-    let mut rpc = RunProgramContext::new(allocator, dialect, pre_eval);
-    rpc.run_program(program, args, max_cost)
+    let (resp, _) = run_program_with_test_samples_option(
+        allocator, dialect, program, args, max_cost, pre_eval, false,
+    );
+    return resp;
 }
 
 #[test]

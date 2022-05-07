@@ -1,5 +1,5 @@
 [workspace]
-members = ["wasm", "wheel", "fuzzlib"]
+members = ["wasm", "wheel", "fuzzlib", "testgen"]
 
 [package]
 name = "clvmr"
