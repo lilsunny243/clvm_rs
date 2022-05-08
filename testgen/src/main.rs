@@ -57,11 +57,15 @@ fn main() {
         }));
     }
 
-    let ret_path = "./ret.clvm";
+    let ret_path = "./ret.clvm.hex";
 
     println!("Writing results (file {})", ret_path);
 
-    fs::write(ret_path, node_to_bytes(&Node::new(&a, ret.1)).unwrap()).unwrap();
+    fs::write(
+        ret_path,
+        hex::encode(node_to_bytes(&Node::new(&a, ret.1)).unwrap()),
+    )
+    .unwrap();
 
     let tests_path = "./tests.json";
 
